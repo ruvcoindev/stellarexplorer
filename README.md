@@ -7,9 +7,9 @@ A ledger explorer for [Stellar](https://stellar.org).
 
 Deployments:
 
-- Public: <https://steexp.com>
-- Test: <https://testnet.steexp.com>
-- Futurenet: <https://futurenet.steexp.com>
+- Public: <https://explore.ruvcha.in>
+- Test: <https://testnet.ruvcha.in>
+- Futurenet: <https://futurenet.ruvcha.in>
 - Local: <http://localhost:3000>
 
 ## Resources
@@ -18,8 +18,8 @@ Deployments:
 
 | Resource             | URI                                                     |
 | -------------------- | ------------------------------------------------------- |
-| Operations           | [/operations](https://steexp.com/operations)            |
-| Transactions         | [/txs](https://steexp.com/txs)                          |
+| Operations           | [/operations](https://explorer.ruvcha.in/operations)            |
+| Transactions         | [/txs](https://explorer.ruvcha.in/txs)                          |
 | Ledgers              | [/ledgers](https://steexp.com/ledgers)                  |
 | Payments             | [/payments](https://steexp.com/payments)                |
 | Trades               | [/trades](https://steexp.com/trades)                    |
