@@ -7,7 +7,7 @@ A ledger explorer for [Stellar](https://stellar.org).
 
 Deployments:
 
-- Public: <https://explore.ruvcha.in>
+- Public: <https://explorer.ruvcha.in>
 - Test: <https://testnet.ruvcha.in>
 - Futurenet: <https://futurenet.ruvcha.in>
 - Local: <http://localhost:3000>
