@@ -1,5 +1,6 @@
 import { Horizon } from 'stellar-sdk'
 
+import type { NetworkKey } from './networks'
 import networks, { requestToNetworkDetails } from './networks'
 import SorobanServer, { sorobanRpcURIs } from './server_soroban'
 import { isLocalhost } from './utils'
@@ -10,6 +11,12 @@ export const defaultNetworkAddresses: Record<string, string> = {
   test: 'https://horizon-testnet.stellar.org',
   future: 'https://horizon-futurenet.stellar.org',
   local: 'http://localhost:8000',
+}
+
+export interface HorizonServerDetails {
+  serverAddress: string
+  networkType: NetworkKey | null
+  requestURL: string
 }
 
 /**
@@ -42,6 +49,19 @@ const requestToServer = async (request: Request): Promise<HorizonServer> => {
   return server
 }
 
+const requestToServerDetails = async (
+  request: Request,
+): Promise<HorizonServerDetails> => {
+  const { networkType, customHorizonAddress } =
+    await requestToNetworkDetails(request)
+
+  const serverAddress: string = isValidUrl(customHorizonAddress)
+    ? customHorizonAddress
+    : defaultNetworkAddresses[networkType]
+
+  return { serverAddress, networkType, requestURL: request.url }
+}
+
 const requestToSorobanServer = async (
   request: Request,
 ): Promise<SorobanServer> => {
@@ -59,4 +79,9 @@ const requestToSorobanServer = async (
   return server
 }
 
-export { HorizonServer as default, requestToServer, requestToSorobanServer }
+export {
+  HorizonServer as default,
+  requestToServer,
+  requestToServerDetails,
+  requestToSorobanServer,
+}

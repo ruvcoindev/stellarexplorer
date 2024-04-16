@@ -6,9 +6,8 @@ import CardHeader from 'react-bootstrap/CardHeader'
 import Row from 'react-bootstrap/Row'
 import { FormattedMessage, useIntl } from 'react-intl'
 
-import { Outlet, useLoaderData, useLocation } from '@remix-run/react'
+import { Outlet, useLoaderData, useLocation, useParams } from '@remix-run/react'
 import type { LoaderFunctionArgs } from '@remix-run/node'
-import { json } from '@remix-run/node'
 
 import { captureException } from '@sentry/remix'
 import has from 'lodash/has'
@@ -21,7 +20,9 @@ import { setTitle } from '../lib/utils'
 import { titleWithJSONButton } from '../components/shared/TitleWithJSONButton'
 import ClipboardCopy from '../components/shared/ClipboardCopy'
 import Logo from '../components/shared/Logo'
-import { requestToServer } from '~/lib/stellar/server'
+import type { HorizonServerDetails } from '~/lib/stellar/server'
+import HorizonServer, { requestToServerDetails } from '~/lib/stellar/server'
+import type { LoadAccountResult } from '~/lib/stellar/server_request_utils'
 import { loadAccount } from '~/lib/stellar/server_request_utils'
 import AccountTypeUnrecognizedException from '~/lib/error/AccountTypeUnrecognizedException'
 import TabLink from './lib/tab-link-base'
@@ -42,6 +43,7 @@ const MuxedAccountInfoCard = ({ address }: { address: string }) => {
       <img
         src={infoSvg}
         style={{ color: 'white', height: 14, width: 14, marginLeft: 10 }}
+        alt="Info icon"
       />
       &nbsp; NOTE: This view shows the base account of the multiplexed account
       &nbsp;
@@ -141,45 +143,64 @@ const pathToTabName = (path: string) => {
 
 export { ErrorBoundary }
 
-export const loader = async ({ params, request }: LoaderFunctionArgs) => {
-  const server = await requestToServer(request)
-  let response
-  try {
-    response = await Promise.all([
-      loadAccount(server, params.accountId as string),
-      server.serverURL.toString(),
-    ]).then((result) => ({ accountResult: result[0], horizonURL: result[1] }))
-  } catch (error) {
-    if (error instanceof NotFoundError) {
-      throw new Response(null, {
-        status: 404,
-        statusText: `Account ${params.accountId} not found on this network.`,
-      })
-    } else if (error instanceof AccountTypeUnrecognizedException) {
-      throw new Response(null, {
-        status: 400,
-        statusText: error.message,
-      })
-    } else {
-      captureException(error)
-      throw error
-    }
-  }
-  return json(response)
-}
+export const loader = ({ request }: LoaderFunctionArgs) =>
+  requestToServerDetails(request)
 
 export default function Account() {
+  const serverDetails = useLoaderData<typeof loader>() as HorizonServerDetails
+  const { accountId } = useParams()
+
   const [activeTab, setActiveTab] = useState('data')
-  const { accountResult, horizonURL } = useLoaderData<typeof loader>()
+  const [accountResponse, setAccountResponse] = useState(null)
+
   const { pathname } = useLocation()
 
   useEffect(() => {
-    setActiveTab(pathToTabName(pathname))
+    if (typeof window !== 'undefined') {
+      setActiveTab(pathToTabName(pathname))
+
+      const server = new HorizonServer(
+        serverDetails.serverAddress,
+        serverDetails.networkType as string,
+      )
+      Promise.all([
+        loadAccount(server, accountId as string),
+        server.serverURL.toString(),
+      ])
+        .then((result) => ({ accountResult: result[0], horizonURL: result[1] }))
+        .then(setAccountResponse as any)
+        .catch((error) => {
+          if (error instanceof NotFoundError) {
+            throw new Response(null, {
+              status: 404,
+              statusText: `Account ${accountId} not found on this network.`,
+            })
+          } else if (error instanceof AccountTypeUnrecognizedException) {
+            throw new Response(null, {
+              status: 400,
+              statusText: error.message,
+            })
+          } else {
+            captureException(error)
+            throw error
+          }
+        })
+    }
   }, [pathname])
 
+  if (!accountResponse) {
+    return
+  }
+
+  const {
+    accountResult,
+    horizonURL,
+  }: { accountResult: LoadAccountResult; horizonURL: string } =
+    accountResponse as any
+
   const { account, muxedAddress, federatedAddress } = accountResult
-  const accountRec = account as ServerApi.AccountRecord
-  const base = `/account/${accountRec.id}`
+
+  const base = `/account/${account.id}`
 
   return (
     <Container>
@@ -190,8 +211,8 @@ export default function Account() {
       )}
       <Row>
         <AccountSummaryCard
-          account={accountRec}
-          accountUrl={`${horizonURL}accounts/${accountRec.id}`}
+          account={account}
+          accountUrl={`${horizonURL}accounts/${account.id}`}
           federatedAddress={federatedAddress}
           knownAccounts={knownAccounts}
         />
